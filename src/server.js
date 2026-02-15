@@ -6,6 +6,7 @@ const cors = require('cors');
 const compression = require('compression');
 const morgan = require('morgan');
 const connectDB = require('./config/database');
+const rideRoutes = require('./routes/ride.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +26,9 @@ app.get('/health', (req, res) => {
     uptime: process.uptime()
   });
 });
+
+// Routes
+app.use('/api/v1', rideRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {
