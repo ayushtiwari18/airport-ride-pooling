@@ -4,6 +4,7 @@ const Passenger = require('../models/Passenger');
 const poolingService = require('./pooling.service');
 const pricingService = require('./pricing.service');
 const { calculateDistance } = require('../utils/geo');
+const cache = require('../config/cache');
 
 class RideService {
   async createRide({ passengerId, pickup, dropoff, luggageCount }) {
@@ -42,10 +43,18 @@ class RideService {
   }
 
   async cancelRide(rideId) {
+    cache.delete(`ride:${rideId}`);
     return poolingService.cancelRide(rideId);
   }
 
   async getRideWithPool(rideId) {
+    const cacheKey = `ride:${rideId}`;
+    const cached = cache.get(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+
     const ride = await Ride.findById(rideId)
       .populate('passenger', 'name phone email')
       .populate({
@@ -56,6 +65,10 @@ class RideService {
         }
       })
       .lean();
+
+    if (ride && ride.status !== 'pending') {
+      cache.set(cacheKey, ride, 2 * 60 * 1000); // Cache for 2 mins
+    }
 
     return ride;
   }
