@@ -5,6 +5,8 @@ const helmet = require('helmet');
 const cors = require('cors');
 const compression = require('compression');
 const morgan = require('morgan');
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('../swagger.json');
 const connectDB = require('./config/database');
 const rideRoutes = require('./routes/ride.routes');
 
@@ -12,11 +14,19 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Security & middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Allow Swagger UI to load
+}));
 app.use(cors());
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(morgan('combined'));
+
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "Airport Ride Pooling API"
+}));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -29,6 +39,11 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/v1', rideRoutes);
+
+// API Documentation redirect
+app.get('/', (req, res) => {
+  res.redirect('/api-docs');
+});
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -50,6 +65,7 @@ const startServer = async () => {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`API Documentation: http://localhost:${PORT}/api-docs`);
   });
 };
 

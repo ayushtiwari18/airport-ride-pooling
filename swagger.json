@@ -1,0 +1,538 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Smart Airport Ride Pooling API",
+    "version": "1.0.0",
+    "description": "Production-grade backend system for intelligent ride pooling at airports with dynamic pricing and real-time matching.",
+    "contact": {
+      "name": "API Support",
+      "email": "support@ridepooling.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api/v1",
+      "description": "Development server"
+    },
+    {
+      "url": "https://api.ridepooling.com/v1",
+      "description": "Production server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Rides",
+      "description": "Ride management operations"
+    },
+    {
+      "name": "Pools",
+      "description": "Pool information"
+    },
+    {
+      "name": "Pricing",
+      "description": "Price estimation"
+    },
+    {
+      "name": "Health",
+      "description": "System health check"
+    }
+  ],
+  "paths": {
+    "/rides": {
+      "post": {
+        "tags": ["Rides"],
+        "summary": "Create a new ride request",
+        "description": "Creates a ride request and attempts to pool it with existing rides based on proximity, constraints, and detour tolerance.",
+        "operationId": "createRide",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRideRequest"
+              },
+              "example": {
+                "passengerId": "60d5ec49f1b2c8b1f8c4e123",
+                "pickup": {
+                  "type": "Point",
+                  "coordinates": [77.1025, 28.5562],
+                  "address": "IGI Airport Terminal 3"
+                },
+                "dropoff": {
+                  "type": "Point",
+                  "coordinates": [77.2167, 28.6139],
+                  "address": "Connaught Place, New Delhi"
+                },
+                "luggageCount": 2
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ride created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RideResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - Missing required fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Passenger not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/rides/{rideId}": {
+      "get": {
+        "tags": ["Rides"],
+        "summary": "Get ride status and details",
+        "description": "Retrieves ride information including pool details and passenger information.",
+        "operationId": "getRideStatus",
+        "parameters": [
+          {
+            "name": "rideId",
+            "in": "path",
+            "required": true,
+            "description": "Unique identifier of the ride",
+            "schema": {
+              "type": "string",
+              "example": "60d5ec49f1b2c8b1f8c4e456"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ride details retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RideDetailsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ride not found"
+          }
+        }
+      }
+    },
+    "/rides/{rideId}/cancel": {
+      "post": {
+        "tags": ["Rides"],
+        "summary": "Cancel a ride",
+        "description": "Cancels an existing ride and removes it from the pool. Pool capacity is updated atomically.",
+        "operationId": "cancelRide",
+        "parameters": [
+          {
+            "name": "rideId",
+            "in": "path",
+            "required": true,
+            "description": "Unique identifier of the ride to cancel",
+            "schema": {
+              "type": "string",
+              "example": "60d5ec49f1b2c8b1f8c4e456"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ride cancelled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Ride cancelled successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ride not found"
+          },
+          "400": {
+            "description": "Cannot cancel ride in current status"
+          }
+        }
+      }
+    },
+    "/pools/{poolId}": {
+      "get": {
+        "tags": ["Pools"],
+        "summary": "Get pool details",
+        "description": "Retrieves detailed information about a ride pool including all associated rides and passengers.",
+        "operationId": "getPoolDetails",
+        "parameters": [
+          {
+            "name": "poolId",
+            "in": "path",
+            "required": true,
+            "description": "Unique identifier of the pool",
+            "schema": {
+              "type": "string",
+              "example": "60d5ec49f1b2c8b1f8c4e789"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pool details retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoolResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pool not found"
+          }
+        }
+      }
+    },
+    "/estimate": {
+      "post": {
+        "tags": ["Pricing"],
+        "summary": "Estimate ride price",
+        "description": "Calculates estimated price based on distance, demand multiplier, and luggage count. Does not create a ride.",
+        "operationId": "estimatePrice",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstimateRequest"
+              },
+              "example": {
+                "pickup": {
+                  "type": "Point",
+                  "coordinates": [77.1025, 28.5562]
+                },
+                "dropoff": {
+                  "type": "Point",
+                  "coordinates": [77.2167, 28.6139]
+                },
+                "luggageCount": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Price estimated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriceEstimateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Pickup and dropoff required"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Health check",
+        "description": "Returns system health status and uptime.",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "System is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "ok"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-02-15T17:04:32.123Z"
+                    },
+                    "uptime": {
+                      "type": "number",
+                      "example": 3600.45
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "GeoPoint": {
+        "type": "object",
+        "required": ["type", "coordinates"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["Point"],
+            "example": "Point"
+          },
+          "coordinates": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "[longitude, latitude]",
+            "example": [77.1025, 28.5562]
+          },
+          "address": {
+            "type": "string",
+            "example": "IGI Airport Terminal 3"
+          }
+        }
+      },
+      "CreateRideRequest": {
+        "type": "object",
+        "required": ["passengerId", "pickup", "dropoff"],
+        "properties": {
+          "passengerId": {
+            "type": "string",
+            "description": "MongoDB ObjectId of the passenger",
+            "example": "60d5ec49f1b2c8b1f8c4e123"
+          },
+          "pickup": {
+            "$ref": "#/components/schemas/GeoPoint"
+          },
+          "dropoff": {
+            "$ref": "#/components/schemas/GeoPoint"
+          },
+          "luggageCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3,
+            "default": 1,
+            "example": 2
+          }
+        }
+      },
+      "EstimateRequest": {
+        "type": "object",
+        "required": ["pickup", "dropoff"],
+        "properties": {
+          "pickup": {
+            "$ref": "#/components/schemas/GeoPoint"
+          },
+          "dropoff": {
+            "$ref": "#/components/schemas/GeoPoint"
+          },
+          "luggageCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3,
+            "default": 1,
+            "example": 1
+          }
+        }
+      },
+      "RideResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "_id": {
+                "type": "string",
+                "example": "60d5ec49f1b2c8b1f8c4e456"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["pending", "pooled", "cancelled", "completed"],
+                "example": "pooled"
+              },
+              "pool": {
+                "type": "string",
+                "example": "60d5ec49f1b2c8b1f8c4e789"
+              },
+              "estimatedPrice": {
+                "type": "number",
+                "example": 245.50
+              },
+              "distanceKm": {
+                "type": "number",
+                "example": 15.3
+              }
+            }
+          }
+        }
+      },
+      "RideDetailsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "passenger": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  }
+                }
+              },
+              "pickup": {
+                "$ref": "#/components/schemas/GeoPoint"
+              },
+              "dropoff": {
+                "$ref": "#/components/schemas/GeoPoint"
+              },
+              "status": {
+                "type": "string"
+              },
+              "pool": {
+                "type": "object"
+              },
+              "estimatedPrice": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "PoolResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "_id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": ["forming", "confirmed", "in_progress", "completed", "cancelled"]
+              },
+              "seatsOccupied": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4
+              },
+              "luggageCount": {
+                "type": "integer"
+              },
+              "rides": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      },
+      "PriceEstimateResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "distanceKm": {
+                "type": "number",
+                "example": 15.3
+              },
+              "basePrice": {
+                "type": "number",
+                "example": 233.60
+              },
+              "demandMultiplier": {
+                "type": "number",
+                "example": 1.2
+              },
+              "luggageFee": {
+                "type": "number",
+                "example": 0
+              },
+              "estimatedPrice": {
+                "type": "number",
+                "example": 280.32
+              },
+              "currency": {
+                "type": "string",
+                "example": "INR"
+              }
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "Missing required fields"
+          }
+        }
+      }
+    }
+  }
+}
