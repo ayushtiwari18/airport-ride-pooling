@@ -16,6 +16,7 @@ Production-grade backend system for intelligent ride pooling at airports with dy
 - **Framework**: Express.js
 - **Database**: MongoDB 7+ with Mongoose ODM
 - **Architecture**: Clean Architecture with Repository pattern
+- **API Documentation**: Swagger/OpenAPI 3.0
 
 ## Quick Start
 
@@ -52,6 +53,18 @@ npm start
 npm run dev
 ```
 
+### Access API Documentation
+
+Once the server is running, visit:
+- **Swagger UI**: http://localhost:3000/api-docs
+- **OpenAPI JSON**: http://localhost:3000/api-docs/swagger.json
+
+The interactive Swagger UI allows you to:
+- Explore all API endpoints
+- Test APIs directly from browser
+- View request/response schemas
+- See example payloads
+
 ## Project Structure
 
 ```
@@ -69,6 +82,13 @@ src/
 ├── utils/           # Helper functions
 └── server.js        # Application entry point
 ```
+
+## Documentation
+
+- **[API Documentation](swagger.json)** - OpenAPI 3.0 specification
+- **[Low Level Design](DESIGN.md)** - Class diagrams, design patterns, data flow
+- **[Performance Guide](PERFORMANCE.md)** - Scaling strategy, indexing, optimization
+- **README.md** - Setup, usage, and quick reference (this file)
 
 ## API Documentation
 
@@ -205,6 +225,8 @@ Response: 200
 }
 ```
 
+**📝 Note**: For complete interactive API documentation with request/response schemas, visit the [Swagger UI](http://localhost:3000/api-docs) after starting the server.
+
 ## Core Algorithm
 
 ### Pool Matching Strategy
@@ -222,6 +244,8 @@ Response: 200
 5. If no match, create new pool
 
 **Complexity**: O(m × r) where m = candidate pools, r = rides per pool
+
+For detailed algorithm analysis, class diagrams, and design patterns, see **[DESIGN.md](DESIGN.md)**.
 
 ### Dynamic Pricing Formula
 
@@ -282,7 +306,10 @@ Use the provided seed script to create test data:
 npm run seed
 ```
 
-Then use curl or Postman to test endpoints:
+Then use:
+1. **Swagger UI** (http://localhost:3000/api-docs) - Interactive testing
+2. **curl** - Command line testing
+3. **Postman** - Import `swagger.json` for Postman collection
 
 ```bash
 # Create ride
@@ -308,7 +335,7 @@ curl -X POST http://localhost:3000/api/v1/rides \
 
 ### Database Indexes
 
-See `PERFORMANCE.md` for detailed indexing strategy.
+See **[PERFORMANCE.md](PERFORMANCE.md)** for detailed indexing strategy.
 
 Key indexes:
 - `pickup.coordinates: 2dsphere` - Fast proximity searches
@@ -368,6 +395,8 @@ POOL_EXPIRY_MINUTES=15
 - Simple to debug and maintain
 - Good enough results (local optimum acceptable)
 - Real-time capable
+
+For complete design rationale and patterns used, see **[DESIGN.md](DESIGN.md)**.
 
 ### Why MongoDB?
 
@@ -460,6 +489,8 @@ POOL_EXPIRY_MINUTES=15
 │   - TTL Index         │
 └─────────────────────┘
 ```
+
+For detailed class diagram and data flow, see **[DESIGN.md](DESIGN.md)**.
 
 ## License
 
